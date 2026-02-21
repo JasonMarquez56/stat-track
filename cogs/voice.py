@@ -17,7 +17,6 @@ class Voice(commands.Cog):
 		print(f"Loaded voice times for {len(self.total_seconds)} user(s) from database")
 
 		# Handle users already in voice when the bot starts
-		await self.bot.wait_until_ready()
 		for guild in self.bot.guilds:
 			for channel in guild.voice_channels:
 				for member in channel.members:
@@ -54,6 +53,9 @@ class Voice(commands.Cog):
 		before: discord.VoiceState,
 		after: discord.VoiceState,
 	):
+		if member.bot:
+			return
+		
 		user_id = member.id
 
 		# Joined a voice channel

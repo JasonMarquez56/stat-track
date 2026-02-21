@@ -1,7 +1,7 @@
 import discord
 from discord.ext import commands
 from discord import app_commands
-from datetime import datetime
+from datetime import datetime, timezone
 import database
 
 class Voice(commands.Cog):
@@ -12,24 +12,32 @@ class Voice(commands.Cog):
 
 	# Startup
 	async def cog_load(self):
-		# Called when cog is loaded, restore data from the databse
+		# Called when cog is loaded, restore data from the database
 		self.total_seconds = database.get_all_voice_times()
 		print(f"Loaded voice times for {len(self.total_seconds)} user(s) from database")
 
-		# Handle users already in voice when the bot starts
+	def _track_existing_voice_members(self, guild: discord.Guild):
+		for channel in guild.voice_channels:
+			for member in channel.members:
+				if not member.bot and member.id not in self.join_times:
+					self.join_times[member.id] = datetime.now(timezone.utc)
+					print(f"Tracking existing session: {member.display_name}")
+
+	@commands.Cog.listener()
+	async def on_ready(self):
 		for guild in self.bot.guilds:
-			for channel in guild.voice_channels:
-				for member in channel.members:
-					if not member.bot:
-						self.join_times[member.id] = datetime.utcnow()
-						print(f"Tracking existing session: {member.display_name}")
+			self._track_existing_voice_members(guild)
+
+	@commands.Cog.listener()
+	async def on_guild_join(self, guild: discord.Guild):
+		self._track_existing_voice_members(guild)
 
 	# Helpers
 	def get_total_seconds(self, user_id: int) -> float:
 		# Returns total voice seconds for a user, includes current session if active
 		total = self.total_seconds.get(user_id, 0)
 		if user_id in self.join_times:
-			total += (datetime.utcnow() - self.join_times[user_id]).total_seconds()
+			total += (datetime.now(timezone.utc) - self.join_times[user_id]).total_seconds()
 		return total
 	
 	def format_duration(self, seconds: float) -> str:
@@ -60,12 +68,12 @@ class Voice(commands.Cog):
 
 		# Joined a voice channel
 		if before.channel is None and after.channel is not None:
-			self.join_times[user_id] = datetime.utcnow()
+			self.join_times[user_id] = datetime.now(timezone.utc)
 
 		# Left a voice channel
 		elif before.channel is not None and after.channel is None:
 			if user_id in self.join_times:
-				duration = (datetime.utcnow() - self.join_times[user_id]).total_seconds()
+				duration = (datetime.now(timezone.utc) - self.join_times[user_id]).total_seconds()
 				self.total_seconds[user_id] = self.total_seconds.get(user_id, 0) + duration
 				del self.join_times[user_id]
 

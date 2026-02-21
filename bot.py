@@ -1,5 +1,6 @@
 import discord
 from discord.ext import commands
+import database
 import os
 from dotenv import load_dotenv
 
@@ -29,6 +30,10 @@ async def on_ready():
 	assert bot.user is not None
 	print(f"\nLogged in as {bot.user} (ID: {bot.user.id})")
 	print("-" * 40)
+	# Initialize the databse first
+	print("Setting up database...")
+	database.initialize()
+	
 	print("Loading cogs...")
 	await load_cogs()
 

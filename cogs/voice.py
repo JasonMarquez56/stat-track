@@ -9,11 +9,14 @@ class Voice(commands.Cog):
 		self.bot = bot
 		self.join_times: dict[int, datetime] = {} # user_id -> join time
 		self.total_seconds: dict[int, float] = {} # user_id -> total seconds
+		self.monthly_seconds: dict[int, float] = {} # user_id -> seconds this month
 
 	# Startup
 	async def cog_load(self):
 		# Called when cog is loaded, restore data from the database
 		self.total_seconds = database.get_all_voice_times()
+		now = datetime.now(timezone.utc)
+		self.monthly_seconds = database.get_all_monthly_voice_times(now.year, now.month)
 		print(f"Loaded voice times for {len(self.total_seconds)} user(s) from database")
 
 	def _track_existing_voice_members(self, guild: discord.Guild):
@@ -36,6 +39,13 @@ class Voice(commands.Cog):
 	def get_total_seconds(self, user_id: int) -> float:
 		# Returns total voice seconds for a user, includes current session if active
 		total = self.total_seconds.get(user_id, 0)
+		if user_id in self.join_times:
+			total += (datetime.now(timezone.utc) - self.join_times[user_id]).total_seconds()
+		return total
+
+	def get_monthly_seconds(self, user_id: int) -> float:
+		# Returns this month's voice seconds, includes current session if active
+		total = self.monthly_seconds.get(user_id, 0)
 		if user_id in self.join_times:
 			total += (datetime.now(timezone.utc) - self.join_times[user_id]).total_seconds()
 		return total
@@ -73,12 +83,15 @@ class Voice(commands.Cog):
 		# Left a voice channel
 		elif before.channel is not None and after.channel is None:
 			if user_id in self.join_times:
-				duration = (datetime.now(timezone.utc) - self.join_times[user_id]).total_seconds()
+				now = datetime.now(timezone.utc)
+				duration = (now - self.join_times[user_id]).total_seconds()
 				self.total_seconds[user_id] = self.total_seconds.get(user_id, 0) + duration
+				self.monthly_seconds[user_id] = self.monthly_seconds.get(user_id, 0) + duration
 				del self.join_times[user_id]
 
-				# Save updated total to the database
+				# Save updated totals to the database
 				database.save_voice_time(user_id, self.total_seconds[user_id])
+				database.save_monthly_voice_time(user_id, self.monthly_seconds[user_id], now.year, now.month)
 
 	# Commands
 	@app_commands.command(name="voicetime", description="Check how long a user has spent in voice channels.")

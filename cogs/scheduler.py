@@ -5,6 +5,8 @@ from datetime import datetime, timezone
 import discord
 from discord.ext import commands, tasks
 
+from cogs.voice import Voice
+
 
 class Scheduler(commands.Cog):
 	def __init__(self, bot: commands.Bot):
@@ -41,7 +43,7 @@ class Scheduler(commands.Cog):
 			return
 
 		voice_cog = self.bot.cogs.get("Voice")
-		if voice_cog is None:
+		if not isinstance(voice_cog, Voice):
 			print("[Scheduler] Voice cog not loaded, cannot build monthly leaderboard")
 			return
 

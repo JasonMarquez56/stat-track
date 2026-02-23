@@ -81,5 +81,14 @@ class Scheduler(commands.Cog):
 		print(f"[Scheduler] Posted monthly leaderboard for {month_name}")
 
 
+	@commands.command(name="testmonthly", hidden=True)
+	@commands.is_owner()
+	async def test_monthly_post(self, ctx: commands.Context):
+		"""Manually trigger the monthly leaderboard post for testing."""
+		now = datetime.now(timezone.utc)
+		await self._post_monthly_leaderboard(now.year, now.month)
+		await ctx.message.add_reaction("✅")
+
+
 async def setup(bot: commands.Bot):
 	await bot.add_cog(Scheduler(bot))

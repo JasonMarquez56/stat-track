@@ -53,10 +53,13 @@ class Voice(commands.Cog):
 	def format_duration(self, seconds: float) -> str:
 		# Converts seconds into readable strings
 		seconds = int(seconds)
+		days = seconds // 86,400
 		hours = seconds // 3600
 		minutes = (seconds % 3600) // 60
 		secs = seconds % 60
-		if hours > 0:
+		if days > 0:
+			return f"{days}d {hours}h {minutes}m {secs}s"
+		elif hours > 0:
 			return f"{hours}h {minutes}m {secs}s"
 		elif minutes > 0:
 			return f"{minutes}m {secs}s"

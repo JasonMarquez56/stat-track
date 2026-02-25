@@ -1,5 +1,5 @@
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 from discord import app_commands
 from datetime import datetime, timezone
 import database
@@ -18,6 +18,22 @@ class Voice(commands.Cog):
 		now = datetime.now(timezone.utc)
 		self.monthly_seconds = database.get_all_monthly_voice_times(now.year, now.month)
 		print(f"Loaded voice times for {len(self.total_seconds)} user(s) from database")
+		self.periodic_save.start()
+
+	async def cog_unload(self):
+		self.periodic_save.cancel()
+
+	@tasks.loop(minutes=15)
+	async def periodic_save(self):
+		now = datetime.now(timezone.utc)
+		for user_id, join_time in list(self.join_times.items()):
+			duration = (now - join_time).total_seconds()
+			total = self.total_seconds.get(user_id, 0) + duration
+			monthly = self.monthly_seconds.get(user_id, 0) + duration
+			database.save_voice_time(user_id, total)
+			database.save_monthly_voice_time(user_id, monthly, now.year, now.month)
+		if self.join_times:
+			print(f"Periodic save: saved voice times for {len(self.join_times)} active user(s)")
 
 	def _track_existing_voice_members(self, guild: discord.Guild):
 		for channel in guild.voice_channels:

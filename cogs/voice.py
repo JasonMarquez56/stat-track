@@ -54,7 +54,7 @@ class Voice(commands.Cog):
 		# Converts seconds into readable strings
 		seconds = int(seconds)
 		days = seconds // 86400
-		hours = seconds // 3600
+		hours = (seconds % 86400) // 3600
 		minutes = (seconds % 3600) // 60
 		secs = seconds % 60
 		if days > 0:
